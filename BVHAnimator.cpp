@@ -234,7 +234,17 @@ void  BVHAnimator::renderJointsGL( const JOINT* joint, const float*data, float s
 		glTranslatef( joint->offset.x*scale, joint->offset.y*scale, joint->offset.z*scale );
 	}
 
-
+	// rotate
+	for (uint i = 0; i<joint->channels.size(); i++)
+	{
+		CHANNEL *channel = joint->channels[i];
+		if (channel->type == X_ROTATION)
+			glRotatef(data[channel->index], 1.0f, 0.0f, 0.0f);
+		else if (channel->type == Y_ROTATION)
+			glRotatef(data[channel->index], 0.0f, 1.0f, 0.0f);
+		else if (channel->type == Z_ROTATION)
+			glRotatef(data[channel->index], 0.0f, 0.0f, 1.0f);
+	}
 
 	// end site
 	if ( joint->children.size() == 0 )
