@@ -41,6 +41,7 @@ static int win_width, win_height;
 bool   on_animation = true;
 
 float  animation_time = 0.0f;
+float  update_timer = 0.0f;
 
 float  animation_scale = 0.03f, animation_scale_step = 0.005f, animation_scale_max = 0.05f, animation_scale_min = 0.01f;
 
@@ -343,9 +344,12 @@ static void idle(void)
 	if ( on_animation )
 	{
 		ani_time = clock();
-
+		
+		float last_time = animation_time;
 		// convert to second
 		animation_time = (ani_time-ani_start) / (float)CLOCKS_PER_SEC;
+		float dt = animation_time - last_time;
+
 
 #ifdef TEST_IK	
 
@@ -355,12 +359,17 @@ static void idle(void)
         // -----------------------------------
         // TODO: [Part 1 - Animation Basics]
         // -----------------------------------
-
         if ( bvh )
 		{
-                        			
-            frame_no = 0;
-
+			update_timer += dt;
+			// Reset animation
+			if (frame_no > bvh->getNumFrames())
+				frame_no = 0;
+			// Time to update frame
+			if (update_timer > bvh->getFrameTime()){
+				frame_no++;
+				update_timer = 0;
+			}
 		}
 		else
 			frame_no = 0;
