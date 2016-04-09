@@ -386,6 +386,87 @@ void BVHAnimator::renderMannequin(int frame, float scale) {
     _bvh->quaternionMoveTo(frame, scale);
     //_bvh->matrixMoveTo(frame, scale);
     // NOTE: you can use matrix or quaternion to calculate the transformation
+	//color[0] = 1.; color[1] = 0.; color[2] = 0.;
+//	renderSkeleton(_bvh->getRootJoint(), _bvh->getMotionDataPtr(frame), scale);
+
+	color[0] = 1.; color[1] = 0.; color[2] = 1.;
+	
+	std::vector<JOINT*> jointList = _bvh->getJointList();
+	for (std::vector<JOINT*>::iterator it = jointList.begin(); it != jointList.end(); it++)
+	{
+		JOINT* joint = (*it);
+		glPushMatrix();
+
+		// convert quaternion and translation into matrix for rendering        
+		glm::mat4 mat = rigidToMat4((*it)->transform);
+		GLdouble m[16];
+		mat4ToGLdouble16(m, mat);
+		glMultMatrixd(m);
+
+		color[0] = 1.; color[1] = 0.; color[2] = 1.;
+
+		// Body
+		if(joint->name == "Head"){
+			color[0] = 0.8; color[1] = 0.5; color[2] = 1.;
+			renderSphere(0, 0.1, 0, 0.11);
+		}
+		else if (joint->name == "Neck") {
+			renderSphere(0, 0.2, 0, 0.07);
+		}
+		else if (joint->name == "LeftShoulder" || joint->name == "RightShoulder") {
+			renderSphere(0, 0, 0, 0.17);
+		}
+		else if (joint->name == "Spine1") {
+			renderSphere(0, 0, 0, 0.15);
+		}
+		else if (joint->name == "Spine") {
+			renderSphere(0, 0.1, 0, 0.13);
+		}
+		// Arms
+		else if (joint->name == "LeftArm" || joint->name == "RightArm") {
+			renderSphere(0, 0, 0, 0.1);
+			JOINT *  child = joint->children[0];
+			renderBone(0.0f, 0.0f, 0.0f, child->offset.x*scale, child->offset.y*scale, child->offset.z*scale, 0.05);
+		}
+		else if (joint->name == "RightForeArm" || joint->name == "LeftForeArm") {
+			renderSphere(0, 0, 0, 0.07);
+			JOINT *  child = joint->children[0];
+			renderBone(0.0f, 0.0f, 0.0f, child->offset.x*scale, child->offset.y*scale, child->offset.z*scale, 0.05);
+		} 
+		else if (joint->name == "RightHand" || joint->name == "LeftHand") {
+			renderSphere(0, 0, 0, 0.05);
+		}
+		// Legs
+		else if (joint->name == "LeftUpLeg" || joint->name == "RightUpLeg") {
+			renderSphere(0, 0, 0, 0.1);
+			JOINT *  child = joint->children[0];
+			renderBone(0.0f, 0.0f, 0.0f, child->offset.x*scale, child->offset.y*scale, child->offset.z*scale, 0.07);
+		} 
+		else if (joint->name == "LeftLeg" || joint->name == "RightLeg") {
+			renderSphere(0, 0, 0, 0.08);
+			JOINT *  child = joint->children[0];
+			renderBone(0.0f, 0.0f, 0.0f, child->offset.x*scale, child->offset.y*scale, child->offset.z*scale, 0.07);
+		} 
+		// Feet
+		else if (joint->name == "LeftFoot" || joint->name == "RightFoot") {
+			renderSphere(0, 0, 0, 0.06);
+			JOINT *  child = joint->children[0];
+			renderBone(0.0f, 0.0f, 0.0f, child->offset.x*scale, child->offset.y*scale, child->offset.z*scale, 0.05);
+		}
+		else if (joint->name == "LeftToeBase" || joint->name == "RightToeBase") {
+			renderSphere(0, 0, 0, 0.04);
+		}
+		/*
+		else if (joint->name == "Head" || joint->name == "Neck" || joint->name == "RightShoulder" || joint->name == "LeftShoulder"
+			|| joint->name == "RightLeg" || joint->name == "LeftLeg" || joint->name == "LeftFoot" || joint->name == "RightFoot"
+			|| joint->name == "RightArm" || joint->name == "LeftArm" || joint->name == "LeftUpLeg" || joint->name == "RightUpLeg"
+			|| joint->name == "LeftForeArm" || joint->name == "RightForeArm" ||joint->name == "L_Wrist_End" ||joint->name == "R_Wrist_End"
+			|| joint->name == "LeftHand" || joint->name == "RightHand" || joint->name == "LeftToeBase" || joint->name == "RightToeBase"){
+			color[0] = 1.; color[1] = 0.; color[2] = 1.;
+			renderSphere(0, 0, 0, 0.05);
+		}*/
+		glPopMatrix();
+	}
 
 
 }
