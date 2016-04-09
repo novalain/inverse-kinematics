@@ -280,9 +280,13 @@ void BVH::quaternionMoveJoint(JOINT* joint, float* mdata, float scale)
     joint->transform.translation = glm::vec3(joint->offset.x * scale,
                                              joint->offset.y * scale,
                                              joint->offset.z * scale);
+
     joint->transform.quaternion = glm::quat();
 
-    // --------------------------------------
+	//glm::quat rotation = glm::quat_cast(joint->matrix);
+	//glm::vec3 pos_vec = glm::vec3(joint->matrix[3]);
+
+	// --------------------------------------
     // TODO: [Part 2b - Forward Kinematics]
     // --------------------------------------
     // maintain the translation and the quaternion in the joint->transform properly
@@ -296,34 +300,42 @@ void BVH::quaternionMoveJoint(JOINT* joint, float* mdata, float scale)
         CHANNEL *channel = joint->channels[i];
 		float value = mdata[channel->index];
 		switch(channel->type){
-		case X_POSITION:			
-			break;
-
-		case Y_POSITION:        			
-			break;
-
-		case Z_POSITION:        			
-			break;
-
-		case X_ROTATION:
-        {            
-			break;
-        }
-		case Y_ROTATION:
-        {			
-			break;
-        }
-		case Z_ROTATION:        
-        {			
-			break;
-        }
+			case X_POSITION:		
+				joint->transform.translation = glm::vec3(value*scale, 0, 0) + joint->transform.translation;
+				break;
+			case Y_POSITION:      
+				joint->transform.translation = glm::vec3(0, value*scale, 0) + joint->transform.translation;
+				break;
+			case Z_POSITION:     
+				joint->transform.translation = glm::vec3(0, 0, value*scale) + joint->transform.translation;
+				break;
+			case X_ROTATION:
+			{          
+				joint->transform.quaternion = glm::rotate(joint->transform.quaternion, value, glm::vec3(1, 0, 0));
+				break;
+			}
+			case Y_ROTATION:
+			{			
+				joint->transform.quaternion = glm::rotate(joint->transform.quaternion, value, glm::vec3(0, 1, 0));
+				break;
+			}
+			case Z_ROTATION:        
+			{			
+				//std::cout << "rotate before: q.w " << joint->transform.quaternion.w << "q.x" << joint->transform.quaternion.x << std::endl;
+				//joint->transform.quaternion = glm::rotate(rotation, value, glm::vec3(0, 0, 1));
+				//std::cout << "rotate AFTER: q.w " << joint->transform.quaternion.w << "q.x" << joint->transform.quaternion.x << std::endl;
+				joint->transform.quaternion = glm::rotate(joint->transform.quaternion, value, glm::vec3(0, 0, 1));
+				break;
+			}
 		}
 	}
 
     // apply parent's transfomation matrix to this joint to make the transformation global
     if (joint->parent != NULL) {
-        
-
+		
+		// Translation is dependent on parent's rotation
+		joint->transform.translation = joint->parent->transform.translation + glm::rotate(joint->parent->transform.quaternion, joint->transform.translation);
+		joint->transform.quaternion = joint->parent->transform.quaternion * joint->transform.quaternion;
 
     }
 
