@@ -6,6 +6,7 @@
  
 #include "BVHAnimator.h"
 
+#include "Eigen/Dense"
 #include <ctime>
 
 #include <iostream>
@@ -473,10 +474,9 @@ void BVHAnimator::renderMannequin(int frame, float scale) {
 
 void BVHAnimator::solveLeftArm(int frame_no, float scale, float x, float y, float z)
 {
-    //_bvh->matrixMoveTo(frame_no, scale);      
-    _bvh->quaternionMoveTo(frame_no, scale);
+    _bvh->matrixMoveTo(frame_no, scale);      
+   // _bvh->quaternionMoveTo(frame_no, scale);
     // NOTE: you can use either matrix or quaternion to calculate the transformation
-
 	float *LArx, *LAry, *LArz, *LFAry;
 	
 	float *mdata = _bvh->getMotionDataPtr(frame_no);
@@ -501,10 +501,60 @@ void BVHAnimator::solveLeftArm(int frame_no, float scale, float x, float y, floa
     // Put your code below
     // -------------------------------------------------------
 
+	float dtheta = 0.1;
+
+	glm::vec4 endEffectorPos = (lhand->matrix) * glm::vec4(_bvh->getRootJoint()->offset.x, _bvh->getRootJoint()->offset.y, _bvh->getRootJoint()->offset.z, 1);
+
+	std::cout << "x before " << endEffectorPos.x << std::endl;
+	std::cout << "y before " << endEffectorPos.y << std::endl;
+	std::cout << "y before " << endEffectorPos.z << std::endl;
+
+	*LArx += dtheta;
+	*LAry += dtheta;
+	*LArz += dtheta;
+	*LFAry += dtheta;
+
+	_bvh->matrixMoveTo(frame_no, scale);
+
+	glm::vec4 endEffectorPosNew = (lhand->matrix) * glm::vec4(_bvh->getRootJoint()->offset.x, _bvh->getRootJoint()->offset.y, _bvh->getRootJoint()->offset.z, 1);
+	
+	glm::vec4 de = endEffectorPosNew - endEffectorPos;
+	Eigen::MatrixXf J = Eigen::MatrixXf::Zero(3, 4);
+
+	J(0, 0) = de[0] / dtheta;
+	J(0, 1) = de[0] / dtheta;
+	J(0, 2) = de[0] / dtheta;
+	J(0, 3) = de[0] / dtheta;
+
+	J(1, 0) = de[1] / dtheta;
+	J(1, 1) = de[1] / dtheta;
+	J(1, 2) = de[1] / dtheta;
+	J(1, 3) = de[1] / dtheta;
+
+	J(2, 0) = de[2] / dtheta;
+	J(2, 1) = de[2] / dtheta;
+	J(2, 2) = de[2] / dtheta;
+	J(2, 3) = de[2] / dtheta;
+
+	// Calculate inverse 
+	Eigen::MatrixXf J_inverse = J.transpose() * (J * J.transpose()).inverse();
 
 
 
 
+	/*std::cout << "x after " << endEffectorPosNew.x << std::endl;
+	std::cout << "y after " << endEffectorPosNew.y << std::endl;
+	std::cout << "z after " << endEffectorPosNew.z << std::endl;*/
+
+
+
+
+
+
+	// 1. Compute Jacobian
+	// 2. Take the inverse of the Jacobian
+	// 3. Compute Changes in DOFS. dtheta = J-1 * de
+	// 4. Apply the changes to DOFs and move a small time step 
 
 
     // ----------------------------------------------------------

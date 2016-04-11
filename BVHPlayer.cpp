@@ -10,7 +10,7 @@
 
 #include "BVHAnimator.h"
 
-//#define TEST_IK
+#define TEST_IK
 
 #include <GL/glut.h>
 
