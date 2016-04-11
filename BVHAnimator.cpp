@@ -472,9 +472,11 @@ void BVHAnimator::renderMannequin(int frame, float scale) {
 
 }
 
+
+
 void BVHAnimator::solveLeftArm(int frame_no, float scale, float x, float y, float z)
 {
-    _bvh->matrixMoveTo(frame_no, scale);      
+    _bvh->quaternionMoveTo(frame_no, scale);      
    // _bvh->quaternionMoveTo(frame_no, scale);
     // NOTE: you can use either matrix or quaternion to calculate the transformation
 	float *LArx, *LAry, *LArz, *LFAry;
@@ -501,60 +503,75 @@ void BVHAnimator::solveLeftArm(int frame_no, float scale, float x, float y, floa
     // Put your code below
     // -------------------------------------------------------
 
-	float dtheta = 0.1;
-
-	glm::vec4 endEffectorPos = (lhand->matrix) * glm::vec4(_bvh->getRootJoint()->offset.x, _bvh->getRootJoint()->offset.y, _bvh->getRootJoint()->offset.z, 1);
-
-	std::cout << "x before " << endEffectorPos.x << std::endl;
-	std::cout << "y before " << endEffectorPos.y << std::endl;
-	std::cout << "y before " << endEffectorPos.z << std::endl;
-
-	*LArx += dtheta;
-	*LAry += dtheta;
-	*LArz += dtheta;
-	*LFAry += dtheta;
-
-	_bvh->matrixMoveTo(frame_no, scale);
-
-	glm::vec4 endEffectorPosNew = (lhand->matrix) * glm::vec4(_bvh->getRootJoint()->offset.x, _bvh->getRootJoint()->offset.y, _bvh->getRootJoint()->offset.z, 1);
-	
-	glm::vec4 de = endEffectorPosNew - endEffectorPos;
-	Eigen::MatrixXf J = Eigen::MatrixXf::Zero(3, 4);
-
-	J(0, 0) = de[0] / dtheta;
-	J(0, 1) = de[0] / dtheta;
-	J(0, 2) = de[0] / dtheta;
-	J(0, 3) = de[0] / dtheta;
-
-	J(1, 0) = de[1] / dtheta;
-	J(1, 1) = de[1] / dtheta;
-	J(1, 2) = de[1] / dtheta;
-	J(1, 3) = de[1] / dtheta;
-
-	J(2, 0) = de[2] / dtheta;
-	J(2, 1) = de[2] / dtheta;
-	J(2, 2) = de[2] / dtheta;
-	J(2, 3) = de[2] / dtheta;
-
-	// Calculate inverse 
-	Eigen::MatrixXf J_inverse = J.transpose() * (J * J.transpose()).inverse();
-
-
-
-
-	/*std::cout << "x after " << endEffectorPosNew.x << std::endl;
-	std::cout << "y after " << endEffectorPosNew.y << std::endl;
-	std::cout << "z after " << endEffectorPosNew.z << std::endl;*/
-
-
-
-
-
-
 	// 1. Compute Jacobian
 	// 2. Take the inverse of the Jacobian
 	// 3. Compute Changes in DOFS. dtheta = J-1 * de
 	// 4. Apply the changes to DOFs and move a small time step 
+
+	float dtheta = 0.01;
+	int counter = 10;
+
+	//glm::vec3 startPos = lhand->transform.
+
+	do {
+	
+		glm::vec3 endEffectorPos = lhand->transform.translation;
+
+		// Take a theoretical step
+		*LArx += dtheta;
+		*LAry += dtheta;
+		*LArz += dtheta;
+		*LFAry += dtheta;
+
+		_bvh->quaternionMoveTo(frame_no, scale);
+
+		glm::vec3 endEffectorPosNew = lhand->transform.translation;
+		glm::vec3 de = endEffectorPosNew - endEffectorPos;
+
+		// Move back, we only want the theoretical difference
+		*LArx -= dtheta;
+		*LAry -= dtheta;
+		*LArz -= dtheta;
+		*LFAry -= dtheta;
+
+		_bvh->quaternionMoveTo(frame_no, scale);	
+
+		Eigen::MatrixXf J = Eigen::MatrixXf::Zero(3, 4);
+
+		for (int row = 0; row < 3; row++) {
+			for (int col = 0; col < 4; col++) {
+				J(row, col) = de[row] / dtheta;
+			}
+		}
+
+		std::cout << " J " << J << std::endl;
+
+		// Trouble calculating pseudo inverse here.. Fallback with transpose
+		//Eigen::MatrixXf J_inverse = J.transpose() * (J * J.transpose()).inverse();
+		//Eigen::MatrixXf J_inverse = (J.transpose() * J).inverse() * J.transpose();
+		Eigen::MatrixXf J_inverse = J.transpose();
+
+		//std::cout << " J_inverse " << J_inverse << std::endl;
+
+		// Compute changes in DOFS
+		Eigen::VectorXf de_2 = Eigen::VectorXf::Zero(3, 1);
+
+		de_2(0) = x - endEffectorPosNew.x;
+		de_2(1) = y - endEffectorPosNew.y;
+		de_2(2) = z - endEffectorPosNew.z;
+
+		Eigen::VectorXf thetaChange = J_inverse * de_2;
+
+		std::cout << "theta " << thetaChange;
+
+		*LArx += thetaChange(0);
+		*LAry += thetaChange(1);
+		*LArz += thetaChange(2);
+		*LFAry +=  thetaChange(3);
+
+		counter--;
+
+	} while (counter > 0); // Keep looping while error is bigger than threshhold or limit reached..
 
 
     // ----------------------------------------------------------
