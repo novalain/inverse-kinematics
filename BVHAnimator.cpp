@@ -477,7 +477,6 @@ void BVHAnimator::renderMannequin(int frame, float scale) {
 void BVHAnimator::solveLeftArm(int frame_no, float scale, float x, float y, float z)
 {
     _bvh->quaternionMoveTo(frame_no, scale);      
-   // _bvh->quaternionMoveTo(frame_no, scale);
     // NOTE: you can use either matrix or quaternion to calculate the transformation
 	float *LArx, *LAry, *LArz, *LFAry;
 	
@@ -506,10 +505,11 @@ void BVHAnimator::solveLeftArm(int frame_no, float scale, float x, float y, floa
 	// 1. Compute Jacobian
 	// 2. Take the inverse of the Jacobian
 	// 3. Compute Changes in DOFS. dtheta = J-1 * de
-	// 4. Apply the changes to DOFs and move a small time step 
+	// 4. Apply the changes to DOFs and continue
 
 	float dtheta = 0.01;
-	int counter = 10;
+	int counter = 0;
+	float error;
 
 	//glm::vec3 startPos = lhand->transform.
 
@@ -518,24 +518,25 @@ void BVHAnimator::solveLeftArm(int frame_no, float scale, float x, float y, floa
 		glm::vec3 endEffectorPos = lhand->transform.translation;
 
 		// Take a theoretical step
-		*LArx += dtheta;
-		*LAry += dtheta;
-		*LArz += dtheta;
-		*LFAry += dtheta;
-
+		*LArx += glm::degrees(dtheta);
+		*LAry += glm::degrees(dtheta);
+		*LArz += glm::degrees(dtheta);
+		*LFAry += glm::degrees(dtheta);
 		_bvh->quaternionMoveTo(frame_no, scale);
 
+		// Get the difference between end effector and theoretical end effector (with small theta applied)
 		glm::vec3 endEffectorPosNew = lhand->transform.translation;
 		glm::vec3 de = endEffectorPosNew - endEffectorPos;
 
 		// Move back, we only want the theoretical difference
-		*LArx -= dtheta;
-		*LAry -= dtheta;
-		*LArz -= dtheta;
-		*LFAry -= dtheta;
-
+		*LArx -= glm::degrees(dtheta);
+		*LAry -= glm::degrees(dtheta);
+		*LArz -= glm::degrees(dtheta);
+		*LFAry -= glm::degrees(dtheta);
 		_bvh->quaternionMoveTo(frame_no, scale);	
 
+
+		// Compute Jacobian
 		Eigen::MatrixXf J = Eigen::MatrixXf::Zero(3, 4);
 
 		for (int row = 0; row < 3; row++) {
@@ -544,34 +545,31 @@ void BVHAnimator::solveLeftArm(int frame_no, float scale, float x, float y, floa
 			}
 		}
 
-		std::cout << " J " << J << std::endl;
-
-		// Trouble calculating pseudo inverse here.. Fallback with transpose
+		// Trouble calculating pseudo inverse here.. Fallback with transpose instead
 		//Eigen::MatrixXf J_inverse = J.transpose() * (J * J.transpose()).inverse();
 		//Eigen::MatrixXf J_inverse = (J.transpose() * J).inverse() * J.transpose();
 		Eigen::MatrixXf J_inverse = J.transpose();
-
 		//std::cout << " J_inverse " << J_inverse << std::endl;
 
-		// Compute changes in DOFS
+		// Compute changes in DOFS through jacobian pseudo inverse method
 		Eigen::VectorXf de_2 = Eigen::VectorXf::Zero(3, 1);
-
-		de_2(0) = x - endEffectorPosNew.x;
-		de_2(1) = y - endEffectorPosNew.y;
-		de_2(2) = z - endEffectorPosNew.z;
-
+		de_2(0) = x - endEffectorPos.x;
+		de_2(1) = y - endEffectorPos.y;
+		de_2(2) = z - endEffectorPos.z;
 		Eigen::VectorXf thetaChange = J_inverse * de_2;
 
-		std::cout << "theta " << thetaChange;
+		// Apply the changes in angles
+		*LArx += glm::degrees(thetaChange(0));
+		*LAry += glm::degrees(thetaChange(1));
+		*LArz += glm::degrees(thetaChange(2));
+		*LFAry += glm::degrees(thetaChange(3));
 
-		*LArx += thetaChange(0);
-		*LAry += thetaChange(1);
-		*LArz += thetaChange(2);
-		*LFAry +=  thetaChange(3);
+		_bvh->quaternionMoveTo(frame_no, scale);
 
-		counter--;
+		counter++;
+		error = glm::abs(endEffectorPos.x - x) + glm::abs(endEffectorPos.y - y) + glm::abs(endEffectorPos.z - z);
 
-	} while (counter > 0); // Keep looping while error is bigger than threshhold or limit reached..
+	} while (counter < 1000 && error > 0.003); // Keep looping while error is bigger than threshhold or limit reached..
 
 
     // ----------------------------------------------------------
